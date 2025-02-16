@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Staff</title>
+    <script type="module">
+        // Load Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXKSt2HUs4_SQ6uHdwqGC33UO3Z2vAsk0",
+            authDomain: "zombiewarriors-todo.firebaseapp.com",
+            projectId: "zombiewarriors-todo",
+            storageBucket: "zombiewarriors-todo.firebasestorage.app",
+            messagingSenderId: "554720349093",
+            appId: "1:554720349093:web:f0093fc9a3440c32d5764c"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Retrieve user data and generate menu
+        document.addEventListener("DOMContentLoaded", async () => {
+            const userName = sessionStorage.getItem("userName");
+            const userRole = sessionStorage.getItem("userRole");
+            const userCode = sessionStorage.getItem("userCode");
+            if (!userName || !userRole || !userCode) {
+                window.location.href = "/index.html"; // Redirect to login if no data exists
+            }
+            document.getElementById("userName").innerText = userName;
+            document.getElementById("userRole").innerText = userRole;
+            handleRoute();
+            if (window.location.pathname.includes("tasks")) {
+                loadTasks(userCode);
+            }
+        });
+
+        // Function to add tasks (Managers only)
+        async function addTask() {
+            const title = document.getElementById("taskTitle").value;
+            const assignedTo = document.getElementById("taskAssignedTo").value;
+            const description = document.getElementById("taskDescription").value;
+            if (!title || !assignedTo || !description) {
+                alert("Please fill in all fields.");
+                return;
+            }
+            await addDoc(collection(db, "tasks"), {
+                title: title,
+                assignedTo: assignedTo,
+                description: description,
+                status: "Open"
+            });
+            alert("Task added successfully!");
+            document.getElementById("taskForm").reset();
+            loadTasks(assignedTo);
+        }
+        window.addTask = addTask;
+
+        // Load tasks from Firestore (only tasks assigned to the logged-in user)
+        async function loadTasks(userCode) {
+            const tasksList = document.getElementById("tasksList");
+            tasksList.innerHTML = "";
+            const querySnapshot = await getDocs(collection(db, "tasks"));
+            querySnapshot.forEach((doc) => {
+                const task = doc.data();
+                if (task.assignedTo === userCode) {
+                    const taskItem = document.createElement("li");
+                    taskItem.textContent = `${task.title} - ${task.description} (Status: ${task.status})`;
+                    tasksList.appendChild(taskItem);
+                }
+            });
+        }
+
+        // Logout function
+        function logout() {
+            sessionStorage.clear();
+            setTimeout(() => {
+                window.location.href = "/index.html";
+            }, 100);
+        }
+        window.logout = logout;
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(to right, #50C878, #1F78D1);
+            color: white;
+            padding: 20px;
+            text-align: left;
+        }
+        .sidebar h2 {
+            border-bottom: 2px solid white;
+            padding-bottom: 10px;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            padding: 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            text-align: center;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .sidebar ul li:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            text-align: center;
+        }
+        .content-section {
+            display: none;
+        }
+        #tasksSection {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Staff Menu</h2>
+        <ul>
+            <li onclick="showSection('dashboard')">Dashboard</li>
+            <li onclick="showSection('team')">Team Management</li>
+            <li onclick="showSection('statistics')">Statistics</li>
+            <li onclick="showSection('tasks')">New Tasks</li>
+            <li onclick="showSection('submitted')">Submitted Tasks</li>
+            <li onclick="logout()" style="color: red; font-weight: bold;">Logout</li>
+        </ul>
+    </div>
+    <div class="content">
+        <h1>Welcome, <span id="userName"></span></h1>
+        <div class="badge">Role: <span id="userRole"></span></div>
+        
+        <div id="tasksSection" class="content-section">
+            <h2>New Tasks</h2>
+            <ul id="tasksList"></ul>
+            <div id="taskFormSection">
+                <h3>Add New Task (Managers Only)</h3>
+                <form id="taskForm">
+                    <input type="text" id="taskTitle" placeholder="Task Title" required>
+                    <input type="text" id="taskDescription" placeholder="Task Description" required>
+                    <input type="text" id="taskAssignedTo" placeholder="Assign to (User Code)" required>
+                    <button type="button" onclick="addTask()">Add Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
